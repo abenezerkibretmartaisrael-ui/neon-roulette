@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Neon Roulette - Premium Board</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --neon-cyan: #00ffcc;
+            --neon-pink: #ff3366;
+            --dark-bg: #070a13;
+            --card-bg: #111625;
+            --border-glow: rgba(0, 255, 204, 0.15);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--dark-bg);
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* App Layout Container */
+        .app-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 16px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        /* Header & Profile Metrics */
+        .brand-header {
+            text-align: center;
+            width: 100%;
+        }
+
+        .brand-header h1 {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 800;
+            letter-spacing: 2px;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
+        }
+
+        .user-meta {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 12px 16px;
+            border-radius: 16px;
+            box-sizing: border-box;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .meta-box {
+            display: flex;
+            flex-direction: column;
+        }
+        .meta-label {
+            font-size: 11px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .meta-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+        #user-balance {
+            color: #4cd964;
+        }
+
+        /* Synchronized Global Timer */
+        .timer-bar {
+            background: rgba(255, 51, 102, 0.06);
+            border: 1px solid rgba(255, 51, 102, 0.2);
+            width: 100%;
+            padding: 10px;
+            border-radius: 12px;
+            text-align: center;
+            box-sizing: border-box;
+            font-weight: 700;
+            font-size: 15px;
+        }
+        #countdown-clock {
+            color: var(--neon-pink);
+            font-size: 18px;
+            text-shadow: 0 0 8px rgba(255, 51, 102, 0.5);
+        }
+
+        /* Visual Spinning Roulette Component */
+        .wheel-viewports {
+            position: relative;
+            width: 240px;
+            height: 240px;
+            margin: 10px 0;
+        }
+        .pointer-pin {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 12px solid transparent;
+            border-right: 12px solid transparent;
+            border-top: 22px solid var(--neon-pink);
+            z-index: 10;
+            filter: drop-shadow(0 2px 6px rgba(255,51,102,0.6));
+        }
+        .roulette-disc {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 6px solid #1e293b;
+            box-shadow: 0 0 20px var(--border-glow);
+            background: conic-gradient(
+                #ff4757 0deg 36deg,   #2ed573 36deg 72deg,
+                #ff4757 72deg 108deg,  #2ed573 108deg 144deg,
+                #ff4757 144deg 180deg, #2ed573 180deg 216deg,
+                #ff4757 216deg 252deg, #2ed573 252deg 288deg,
+                #ff4757 288deg 324deg, #2ed573 324deg 360deg
+            );
+            transition: transform 5s cubic-bezier(0.1, 0.8, 0.1, 1);
+        }
+        .center-axis {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: #0f172a;
+            border: 3px solid var(--neon-cyan);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 8px var(--neon-cyan);
+        }
+
+        /* Interactive Amount Token Selectors */
+        .section-title {
+            align-self: flex-start;
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .token-scroll {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+            overflow-x: auto;
+            padding-bottom: 4px;
+        }
+        .token-chip {
+            flex: 0 0 calc(25% - 8px);
+            background: var(--card-bg);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 12px 0;
+            text-align: center;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .token-chip.selected {
+            border-color: var(--neon-cyan);
+            background: rgba(0, 255, 204, 0.08);
+            color: var(--neon-cyan);
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.15);
+        }
+
+        /* 1-10 Dynamic Grid Matrix */
+        .number-matrix {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            width: 100%;
+        }
+        .grid-cell {
+            background: var(--card-bg);
+            border: 1px solid rgba(255,255,255,0.08);
+            padding: 14px 0;
+            text-align: center;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .grid-cell.active-select {
+            background: var(--neon-cyan);
+            color: #000000;
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 12px var(--neon-cyan);
+        }
+
+        /* Action Buttons */
+        .action-button {
+            width: 100%;
+            background: linear-gradient(135deg, #00ffcc 0%, #00b3ff 100%);
+            color: #000000;
+            border: none;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 16px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0, 255, 204, 0.3);
+            transition: transform 0.1s ease;
+        }
+        .action-button:active {
+            transform: scale(0.98);
+        }
+        .action-button:disabled {
+            background: #1e293b;
+            color: #64748b;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .status-alert {
+            font-size: 13px;
+            color: #94a3b8;
+            text-align: center;
+            min-height: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="brand-header">
+            <h1>NEON ROULETTE</h1>
+        </div>
+
+        <div class="user-meta">
+            <div class="meta-box">
+                <span class="meta-label">Player</span>
+                <span id="user-name" class="meta-value">Loading...</span>
+            </div>
+            <div class="meta-box" style="text-align: right;">
+                <span class="meta-label">Balance</span>
+                <span id="user-balance" class="meta-value">0.00 Birr</span>
+            </div>
+        </div>
+
+        <div class="timer-bar">
+            ⏳ NEXT SPIN IN: <span id="countdown-clock">00:00</span>
+        </div>
+
+        <div class="wheel-viewports">
+            <div class="pointer-pin"></div>
+            <div id="roulette-disc" class="roulette-disc"></div>
+            <div class="center-axis"></div>
+        </div>
+
+        <div id="status-logger" class="status-alert">Establishing secure connection matrices...</div>
+
+        <h3 class="section-title">Select Amount (Birr)</h3>
+        <div class="token-scroll">
+            <div class="token-chip selected" onclick="selectAmount(10, this)">10</div>
+            <div class="token-chip" onclick="selectAmount(50, this)">50</div>
+            <div class="token-chip" onclick="selectAmount(100, this)">100</div>
+            <div class="token-chip" onclick="selectAmount(500, this)">500</div>
+        </div>
+
+        <h3 class="section-title">Select Numbers (1-10)</h3>
+        <div class="number-matrix">
+            <div class="grid-cell" onclick="toggleNumber(1, this)">1</div>
+            <div class="grid-cell" onclick="toggleNumber(2, this)">2</div>
+            <div class="grid-cell" onclick="toggleNumber(3, this)">3</div>
+            <div class="grid-cell" onclick="toggleNumber(4, this)">4</div>
+            <div class="grid-cell" onclick="toggleNumber(5, this)">5</div>
+            <div class="grid-cell" onclick="toggleNumber(6, this)">6</div>
+            <div class="grid-cell" onclick="toggleNumber(7, this)">7</div>
+            <div class="grid-cell" onclick="toggleNumber(8, this)">8</div>
+            <div class="grid-cell" onclick="toggleNumber(9, this)">9</div>
+            <div class="grid-cell" onclick="toggleNumber(10, this)">10</div>
+        </div>
+
+        <button id="submit-bet-btn" class="action-button" onclick="placeBet()">PLACE WALLET WAGER</button>
+    </div>
+
+    <script>
+        // Initialize Telegram WebApp configurations
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Forces the Mini App window to maximize layout heights inside Telegram
+
+        // --- HARDWIRED TO YOUR PYTHONANYWHERE INSTANCE ---
+        const API_BASE = "https://your-abenewa1.pythonanywhere.com"; 
+
+        // Extract native verification IDs directly via Telegram SDK payloads
+        // Fallback structures enable testing parameters cleanly in native standard web browsers
+        const userPayload = tg.initDataUnsafe?.user;
+        const USER_ID = userPayload?.id ? String(userPayload.id) : "6804027482"; 
+        const USER_NAME = userPayload?.username ? `@${userPayload.username}` : "Dev_Test_Account";
+
+        document.getElementById('user-name').innerText = USER_NAME;
+
+        // Reactive Application State Management Variables
+        let currentSelectedAmount = 10;
+        let selectedNumbers = [];
+        let synchronizationTimer = null;
+        let localClockOffset = 0; 
+        let currentRoundState = "BETTING";
+        let hasSpunThisRound = false;
+
+        function selectAmount(value, element) {
+            if(currentRoundState !== "BETTING") return;
+            document.querySelectorAll('.token-chip').forEach(chip => chip.classList.remove('selected'));
+            element.classList.add('selected');
+            currentSelectedAmount = value;
+        }
+
+        function toggleNumber(num, element) {
+            if(currentRoundState !== "BETTING") return;
+            const index = selectedNumbers.indexOf(num);
+            if (index > -1) {
+                selectedNumbers.splice(index, 1);
+                element.classList.remove('active-select');
+            } else {
+                selectedNumbers.push(num);
+                element.add('active-select');
+                element.classList.add('active-select');
+            }
+        }
+
+        // --- SYNCHRONIZED ARCHITECTURE CLOCK LOOPS ---
+        async function syncWithServerState() {
+            try {
+                const response = await fetch(`${API_BASE}/api/state`);
+                const data = await response.json();
+                
+                // Calculate network lag and server time delta offsets
+                const localNow = Date.now() / 1000;
+                localClockOffset = data.server_time - localNow;
+                
+                currentRoundState = data.status;
+                processGlobalStateUpdate(data.target_timestamp);
+            } catch (err) {
+                console.error("Sync Failure:", err);
+            }
+        }
+
+        function processGlobalStateUpdate(targetTimestamp) {
+            if (synchronizationTimer) clearInterval(synchronizationTimer);
+
+            synchronizationTimer = setInterval(() => {
+                const absoluteCurrentTime = (Date.now() / 1000) + localClockOffset;
+                let remainingDelta = Math.max(0, Math.ceil(targetTimestamp - absoluteCurrentTime));
+
+                // Visual formatting configurations
+                document.getElementById('countdown-clock').innerText = `00:${remainingDelta < 10 ? '0' : ''}${remainingDelta}`;
+
+                if (currentRoundState === "BETTING" && remainingDelta <= 0) {
+                    currentRoundState = "RESOLVING";
+                }
+
+                if (currentRoundState === "RESOLVING") {
+                    document.getElementById('countdown-clock').innerText = "00:00";
+                    document.getElementById('submit-bet-btn').disabled = true;
+                    document.getElementById('status-logger').innerHTML = "🛑 <b>BETS LOCKED! SPINNING WHEEL...</b>";
+                    
+                    if (!hasSpunThisRound) {
+                        triggerVisualSpinSequence();
+                    }
+                } else {
+                    // Reset safety flags for upcoming betting blocks
+                    hasSpunThisRound = false;
+                    document.getElementById('submit-bet-btn').disabled = false;
+                    document.getElementById('status-logger').innerText = "Accepting board stakes. Select positions...";
+                }
+            }, 1000);
+        }
+
+        function triggerVisualSpinSequence() {
+            hasSpunThisRound = true;
+            const disc = document.getElementById('roulette-disc');
+            
+            // Generate standard placeholder winner matching backend calculations 
+            const mockWinner = Math.floor(Math.random() * 10) + 1;
+            const degreesPerSegment = 36;
+            const targetRotation = (mockWinner - 1) * degreesPerSegment;
+            const totalSpinDegrees = 1800 + (360 - targetRotation);
+
+            disc.style.transition = "transform 4s cubic-bezier(0.1, 0.8, 0.1, 1)";
+            disc.style.transform = `rotate(${totalSpinDegrees}deg)`;
+
+            setTimeout(() => {
+                document.getElementById('status-logger').innerHTML = `🎯 <b>SPIN COMPLETE!</b> (Check bot chat for results)`;
+                
+                setTimeout(() => {
+                    // Instantly snap disc back cleanly for upcoming round initialization 
+                    disc.style.transition = "none";
+                    disc.style.transform = "rotate(0deg)";
+                    disc.offsetHeight; // Force reflow engine triggers
+                    syncWithServerState(); // Hard refresh system state definitions from server
+                }, 3000);
+            }, 4000);
+        }
+
+        // --- SUBMIT TRANSACTION NETWORKS ---
+        async function placeBet() {
+            if (selectedNumbers.length === 0) {
+                alert("Please select at least one number grid target.");
+                return;
+            }
+
+            const payload = {
+                user_id: USER_ID,
+                amount: currentSelectedAmount,
+                numbers: selectedNumbers
+            };
+
+            document.getElementById('submit-bet-btn').disabled = true;
+            document.getElementById('status-logger').innerText = "Transmitting wager parameters...";
+
+            try {
+                const response = await fetch(`${API_BASE}/api/place_bet`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('user-balance').innerText = `${data.new_balance.toFixed(2)} Birr`;
+                    document.getElementById('status-logger').innerText = "✅ Bet Registered successfully! Good Luck.";
+                    tg.HapticFeedback.notificationOccurred('success'); // Vibrates phone on transaction completion
+                } else {
+                    document.getElementById('status-logger').innerText = `❌ Error: ${data.error}`;
+                    document.getElementById('submit-bet-btn').disabled = false;
+                }
+            } catch (err) {
+                document.getElementById('status-logger').innerText = "Network transmission error encountered.";
+                document.getElementById('submit-bet-btn').disabled = false;
+            }
+        }
+
+        // Initial launch configuration sequences
+        syncWithServerState();
+        setInterval(syncWithServerState, 10000); // Poll API endpoints every 10 seconds to keep global sync immaculate
+    </script>
+</body>
+</html>
