@@ -306,11 +306,10 @@
         const tg = window.Telegram.WebApp;
         tg.expand(); // Forces the Mini App window to maximize layout heights inside Telegram
 
-        // --- HARDWIRED TO YOUR PYTHONANYWHERE INSTANCE ---
-        const API_BASE = "https://your-abenewa1.pythonanywhere.com"; 
+        // --- HARDWIRED TO YOUR LIVE TERMUX SSH TUNNEL ---
+        const API_BASE = "https://901041ce6ddd79.lhr.life"; 
 
         // Extract native verification IDs directly via Telegram SDK payloads
-        // Fallback structures enable testing parameters cleanly in native standard web browsers
         const userPayload = tg.initDataUnsafe?.user;
         const USER_ID = userPayload?.id ? String(userPayload.id) : "6804027482"; 
         const USER_NAME = userPayload?.username ? `@${userPayload.username}` : "Dev_Test_Account";
@@ -340,7 +339,6 @@
                 element.classList.remove('active-select');
             } else {
                 selectedNumbers.push(num);
-                element.add('active-select');
                 element.classList.add('active-select');
             }
         }
@@ -428,6 +426,7 @@
 
             const payload = {
                 user_id: USER_ID,
+                username: USER_NAME, // Bundled to handle seamless auto-registration on Termux backend
                 amount: currentSelectedAmount,
                 numbers: selectedNumbers
             };
