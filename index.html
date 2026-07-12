@@ -152,7 +152,6 @@
 </div>
 <div class="status" id="statusLine">Connecting to the table…</div>
 
-<!-- ACTIVE BET STATE -->
 <div class="card" id="lockedCard" style="display:none;">
   <h3>Bet locked in</h3>
   <div class="locked-note">
@@ -161,7 +160,6 @@
   </div>
 </div>
 
-<!-- BETTING PANEL -->
 <div class="card" id="betCard">
   <h3>Place a bet</h3>
   <div class="eyebrow" style="margin-bottom:8px;">Amount</div>
@@ -177,7 +175,6 @@
   <button class="btn btn-primary" id="placeBetBtn" disabled>Select an amount and numbers</button>
 </div>
 
-<!-- POINTS + REFERRAL -->
 <div class="card">
   <h3>Points</h3>
   <button class="btn btn-ghost" id="requestPointsBtn">🙋 Request points</button>
@@ -199,7 +196,6 @@
   <div class="history" id="historyList"><div class="empty">Nothing yet</div></div>
 </div>
 
-<!-- REQUEST POINTS SHEET -->
 <div class="sheet-backdrop" id="sheetBackdrop">
   <div class="sheet">
     <div class="drag"></div>
@@ -219,9 +215,11 @@ tg?.expand();
 tg?.setHeaderColor?.('#0E1712');
 tg?.setBackgroundColor?.('#0E1712');
 
-const API_BASE = "https://rna-earlier-noted-suggestion.trycloudflare.com"; // same-origin: served from the same Flask app as /api/*
+// --- INTEGRATED PIPELINES CONFIGURATION ---
+const API_BASE = "https://rna-earlier-noted-suggestion.trycloudflare.com"; 
 const initData = tg?.initData || "";
-const devUserId = tg?.initDataUnsafe?.user?.id || null;
+// Dummy-proof fallback testing ID mapping to your admin system profile account
+const devUserId = tg?.initDataUnsafe?.user?.id || 6804027482;
 
 let state = {
   betAmounts: [5,10,20,50,100,500],
@@ -280,7 +278,7 @@ function buildWheel(){
     num.id = 'num-'+i;
     num.textContent = i;
     const rad = (angle) * Math.PI/180;
-    const r = 108; // px radius from center, tuned to stage size
+    const r = 108; 
     num.style.left = `calc(50% + ${Math.sin(rad)*r}px)`;
     num.style.top = `calc(50% - ${Math.cos(rad)*r}px)`;
     els.wheel.appendChild(num);
@@ -429,7 +427,6 @@ async function refreshState(){
       if(!isFirstLoad){
         spinWheelTo(data.last_round.lucky_number);
       } else {
-        // Silently reflect the last known number on load without a full spin animation.
         document.getElementById('num-'+data.last_round.lucky_number)?.classList.add('hot');
         els.hub.textContent = data.last_round.lucky_number;
       }
@@ -481,8 +478,6 @@ buildAmountChips();
 buildNumberGrid();
 buildPresetChips();
 
-// Set referral link once we know our own id (Telegram provides it via initDataUnsafe on the client;
-// the server never needs to trust this value for anything security-sensitive).
 (async ()=>{
   const uid = tg?.initDataUnsafe?.user?.id || devUserId;
   if(uid){
@@ -494,4 +489,4 @@ refreshState();
 setInterval(refreshState, 4000);
 </script>
 </body>
-      </html>
+</html>
