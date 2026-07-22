@@ -207,7 +207,7 @@
     </div>
     <div class="balance">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"/></svg>
-      <span id="balanceVal">--</span><span class="unit">pts</span>
+      <span id="balanceVal">--</span><span class="unit">Birr</span>
     </div>
   </div>
 
@@ -234,7 +234,7 @@
   <!-- Step 0 -->
   <div class="ticket" id="startPanel">
     <div class="body" style="padding-top:18px;">
-      <p class="tagline">Choose your points, pick your numbers, ride the draw.</p>
+      <p class="tagline">Choose your Birr, pick your numbers, ride the draw.</p>
       <button class="btn btn-primary" id="startBetBtn">Get a ticket</button>
     </div>
   </div>
@@ -244,7 +244,7 @@
     <div class="stub">
       <div>
         <div class="eyebrow">Ticket · Step 1</div>
-        <div class="stub-title">Choose your points</div>
+        <div class="stub-title">Choose your Birr</div>
       </div>
     </div>
     <div class="perf"></div>
@@ -261,7 +261,7 @@
         <div class="eyebrow">Ticket · Step 2</div>
         <div class="stub-title">Pick your numbers</div>
       </div>
-      <div class="stub-amount" id="stubAmount">-- pts</div>
+      <div class="stub-amount" id="stubAmount">-- Birr</div>
     </div>
     <div class="perf"></div>
     <div class="body">
@@ -461,7 +461,7 @@ async function refreshMyBet(){
     const data = await res.json();
     if(data.active){
       document.getElementById("waitingText").textContent =
-        `${data.amount} pts on [${data.numbers.join(", ")}] at ${data.odds}×. This ticket is in the drum until the draw finishes.`;
+        `${data.amount} Birr on [${data.numbers.join(", ")}] at ${data.odds}×. This ticket is in the drum until the draw finishes.`;
       showPanel("waiting");
     } else {
       showPanel("start");
@@ -484,7 +484,7 @@ const amountGrid = document.getElementById("amountGrid");
   chip.textContent = amt;
   makeInteractive(chip, () => {
     selectedAmount = amt;
-    document.getElementById("stubAmount").textContent = amt + " pts";
+    document.getElementById("stubAmount").textContent = amt + " Birr";
     buildNumberGrid();
     showPanel("number");
   });
@@ -544,7 +544,7 @@ document.getElementById("confirmBetBtn").onclick = async () => {
       flashMsg(data.error || "Ticket failed", "error");
       return;
     }
-    flashMsg(`Ticket confirmed — ${selectedAmount} pts on [${selectedNumbers.join(", ")}] at ${data.odds}×`, "wait");
+    flashMsg(`Ticket confirmed — ${selectedAmount} Birr on [${selectedNumbers.join(", ")}] at ${data.odds}×`, "wait");
     refreshBalance();
     refreshMyBet();
   }catch(e){
@@ -602,7 +602,7 @@ async function revealResult(boundary){
       const data = await res.json();
       if(data.has_result){
         if(data.won){
-          flashMsg(`Winning number ${data.number} — you won ${data.payout} pts.`, "win");
+          flashMsg(`Winning number ${data.number} — you won ${data.payout} Birr.`, "win");
           winPulse();
         } else {
           flashMsg(`Winning number ${data.number}. Not this round.`, "lose");
@@ -629,4 +629,5 @@ init();
 </script>
 </body>
 </html>
+
 
