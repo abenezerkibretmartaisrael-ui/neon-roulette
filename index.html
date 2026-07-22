@@ -519,7 +519,7 @@ function buildNumberGrid(){
 function computeOdds(count){
   if(count <= 0) return null;
   const fair = 10/count;
-  let odds = fair * 0.9;
+  let odds = fair * 1.0;
   odds = Math.max(1.20, Math.min(10, odds));
   return Math.round(odds*100)/100;
 }
@@ -629,5 +629,4 @@ init();
 </script>
 </body>
 </html>
-
 
