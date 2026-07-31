@@ -432,15 +432,27 @@ function finalRotationFor(number){
 }
 
 // ---- server time sync ----
+// ---- server time sync (protected) ----
 async function syncTime(){
-  const t0 = Date.now();
-  const res = await fetch(API_BASE + "/api/servertime");
-  const data = await res.json();
-  const t1 = Date.now();
-  const rtt = t1 - t0;
-  serverOffset = (data.now - (t1 - rtt/2));
+  try {
+    const t0 = Date.now();
+    const res = await fetch(API_BASE + "/api/servertime");
+    if(!res.ok) return;
+    const data = await res.json();
+    if(data && typeof data.now === "number"){
+      const t1 = Date.now();
+      const rtt = t1 - t0;
+      serverOffset = (data.now - (t1 - rtt/2));
+    }
+  } catch(e) {
+    console.warn("Server time sync failed, using local fallback.");
+  }
 }
-function nowServer(){ return Date.now() + serverOffset; }
+
+function nowServer(){ 
+  const now = Date.now() + serverOffset;
+  return isNaN(now) ? Date.now() : now;
+}
 
 // ---- balance ----
 async function refreshBalance(){
@@ -618,14 +630,22 @@ async function init(){
   layoutWheelNumbers();
   buildBulbRing();
   window.addEventListener("resize", () => { layoutWheelNumbers(); buildBulbRing(); });
-  await syncTime();
-  await refreshBalance();
-  await refreshMyBet();
+
+  // 1. Run tick immediately so countdown works right away
   requestAnimationFrame(tick);
+
+  // 2. Run network calls safely without blocking execution
+  try { await syncTime(); } catch(e){}
+  try { await refreshBalance(); } catch(e){}
+  try { await refreshMyBet(); } catch(e){}
+
+  // 3. Keep background polling active
   setInterval(refreshBalance, 10000);
   setInterval(syncTime, 60000);
 }
+
 init();
+
 </script>
 </body>
 </html>
