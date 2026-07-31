@@ -294,24 +294,24 @@
 <script>
 const params = new URLSearchParams(location.search);
 const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-
 if (tg) {
   try { tg.ready(); tg.expand(); } catch(e){}
   try { tg.setHeaderColor('#15131f'); tg.setBackgroundColor('#15131f'); } catch(e){}
 }
-
 const USER_ID = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id)
   ? String(tg.initDataUnsafe.user.id)
   : (params.get("user_id") || "");
 const TG_INIT_DATA = (tg && tg.initData) ? tg.initData : "";
 
-// Sanitize base URL to eliminate double-slash bug
-const API_BASE = "https://abena.freesrv.com".replace(/\/+$/, "");
+// Leave this empty for local testing (server.py serves this same file, so
+// relative paths already hit the right place). Before publishing this file
+// to GitHub Pages, set it to the backend's Wispbyte URL, no trailing slash:
+//   const API_BASE = "https://abena.freesrv.com/";
+const API_BASE = "https://abena.freesrv.com/";
 
 function apiFetch(path, options={}){
-  const cleanPath = path.startsWith('/') ? path : '/' + path;
   options.headers = Object.assign({}, options.headers, { "X-Telegram-Init-Data": TG_INIT_DATA });
-  return fetch(API_BASE + cleanPath, options);
+  return fetch(API_BASE + path, options);
 }
 
 const ROUND_SECONDS = 60;
@@ -328,40 +328,43 @@ let currentRotation = 0;
 let bulbs = [];
 let lastBulbIdx = -1;
 
-// Helper DOM Getter
-function getEl(id) { return document.getElementById(id); }
+const wheelStageEl = document.getElementById("wheelStage");
+const wheelEl = document.getElementById("wheel");
+const bulbRingEl = document.getElementById("bulbRing");
+const countdownEl = document.getElementById("countdown");
+const statusLine = document.getElementById("statusLine");
+const balanceVal = document.getElementById("balanceVal");
+const msgBox = document.getElementById("msgBox");
+
+const startPanel = document.getElementById("startPanel");
+const amountPanel = document.getElementById("amountPanel");
+const numberPanel = document.getElementById("numberPanel");
+const waitingPanel = document.getElementById("waitingPanel");
 
 function showPanel(name){
-  const map = {start: getEl("startPanel"), amount: getEl("amountPanel"), number: getEl("numberPanel"), waiting: getEl("waitingPanel")};
-  Object.values(map).forEach(p => p && p.classList.add("hidden"));
+  const map = {start:startPanel, amount:amountPanel, number:numberPanel, waiting:waitingPanel};
+  Object.values(map).forEach(p=>p.classList.add("hidden"));
   const el = map[name];
-  if (el) {
-    el.classList.remove("hidden");
-    el.classList.remove("panel-enter");
-    void el.offsetWidth;
-    el.classList.add("panel-enter");
-  }
+  el.classList.remove("hidden");
+  el.classList.remove("panel-enter");
+  void el.offsetWidth;
+  el.classList.add("panel-enter");
 }
 
 function flashMsg(text, cls){
-  const msgBox = getEl("msgBox");
-  if (!msgBox) return;
   msgBox.innerHTML = `<div class="msg ${cls}">${text}</div>`;
   setTimeout(()=>{ if(msgBox.firstChild) msgBox.innerHTML = ""; }, 4500);
 }
 
 function makeInteractive(el, handler){
-  if (!el) return;
   el.tabIndex = 0;
   el.setAttribute("role","button");
   el.addEventListener("click", handler);
   el.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); handler(); } });
 }
 
-// ---- wheel layout ----
+// ---- wheel number layout ----
 function layoutWheelNumbers(){
-  const wheelEl = getEl("wheel");
-  if (!wheelEl) return;
   wheelEl.querySelectorAll(".num").forEach(n=>n.remove());
   const size = wheelEl.clientWidth || 268;
   const center = size/2;
@@ -380,10 +383,8 @@ function layoutWheelNumbers(){
   }
 }
 
+// ---- bulb ring ----
 function buildBulbRing(){
-  const bulbRingEl = getEl("bulbRing");
-  const wheelStageEl = getEl("wheelStage");
-  if (!bulbRingEl || !wheelStageEl) return;
   bulbRingEl.innerHTML = "";
   bulbs = [];
   const stageSize = wheelStageEl.clientWidth || 300;
@@ -405,21 +406,17 @@ function updateBulbChase(nowMs, remaining){
   const idx = Math.floor(nowMs/stepMs) % bulbs.length;
   if(idx !== lastBulbIdx){
     if(bulbs[lastBulbIdx]) bulbs[lastBulbIdx].classList.remove("lit");
-    if(bulbs[idx]) bulbs[idx].classList.add("lit");
+    bulbs[idx].classList.add("lit");
     lastBulbIdx = idx;
   }
 }
 
 function flashBulbs(){
-  const bulbRingEl = getEl("bulbRing");
-  if (!bulbRingEl) return;
   bulbRingEl.classList.add("flash");
   setTimeout(()=> bulbRingEl.classList.remove("flash"), 700);
 }
 
 function winPulse(){
-  const wheelStageEl = getEl("wheelStage");
-  if (!wheelStageEl) return;
   wheelStageEl.classList.add("win-pulse");
   setTimeout(()=> wheelStageEl.classList.remove("win-pulse"), 1100);
 }
@@ -434,32 +431,19 @@ function finalRotationFor(number){
   return target;
 }
 
-// ---- protected server time sync ----
+// ---- server time sync ----
 async function syncTime(){
-  try {
-    const t0 = Date.now();
-    const res = await apiFetch("/api/servertime");
-    if(!res.ok) return;
-    const data = await res.json();
-    if(data && typeof data.now === "number"){
-      const t1 = Date.now();
-      const rtt = t1 - t0;
-      serverOffset = (data.now - (t1 - rtt/2));
-    }
-  } catch(e) {
-    console.warn("Server time sync failed, using local time fallback.");
-  }
+  const t0 = Date.now();
+  const res = await fetch(API_BASE + "/api/servertime");
+  const data = await res.json();
+  const t1 = Date.now();
+  const rtt = t1 - t0;
+  serverOffset = (data.now - (t1 - rtt/2));
 }
+function nowServer(){ return Date.now() + serverOffset; }
 
-function nowServer(){ 
-  const now = Date.now() + serverOffset;
-  return isNaN(now) ? Date.now() : now;
-}
-
-// ---- balance & bets ----
+// ---- balance ----
 async function refreshBalance(){
-  const balanceVal = getEl("balanceVal");
-  if(!balanceVal) return;
   if(!USER_ID) { balanceVal.textContent = "—"; return; }
   try{
     const res = await apiFetch(`/api/balance?user_id=${encodeURIComponent(USER_ID)}`);
@@ -469,16 +453,15 @@ async function refreshBalance(){
   }catch(e){}
 }
 
+// ---- active bet check ----
 async function refreshMyBet(){
   if(!USER_ID) return;
   try{
     const res = await apiFetch(`/api/mybet?user_id=${encodeURIComponent(USER_ID)}`);
     const data = await res.json();
     if(data.active){
-      const waitingText = getEl("waitingText");
-      if(waitingText) {
-        waitingText.textContent = `${data.amount} Birr on [${data.numbers.join(", ")}] at ${data.odds}×. This ticket is in the drum until the draw finishes.`;
-      }
+      document.getElementById("waitingText").textContent =
+        `${data.amount} Birr on [${data.numbers.join(", ")}] at ${data.odds}×. This ticket is in the drum until the draw finishes.`;
       showPanel("waiting");
     } else {
       showPanel("start");
@@ -486,67 +469,31 @@ async function refreshMyBet(){
   }catch(e){}
 }
 
-// ---- betting UI setup ----
-function setupEvents(){
-  const startBtn = getEl("startBetBtn");
-  if(startBtn) {
-    startBtn.onclick = () => {
-      if(!USER_ID){ flashMsg("Open this from Telegram, or add ?user_id= for testing.", "error"); return; }
-      showPanel("amount");
-    };
-  }
-  const cancelAmt = getEl("cancelAmountBtn");
-  if(cancelAmt) cancelAmt.onclick = () => showPanel("start");
-  
-  const cancelNum = getEl("cancelNumberBtn");
-  if(cancelNum) cancelNum.onclick = () => { selectedNumbers=[]; showPanel("amount"); };
+// ---- betting flow ----
+document.getElementById("startBetBtn").onclick = () => {
+  if(!USER_ID){ flashMsg("Open this from Telegram, or add ?user_id= for testing.", "error"); return; }
+  showPanel("amount");
+};
+document.getElementById("cancelAmountBtn").onclick = () => showPanel("start");
+document.getElementById("cancelNumberBtn").onclick = () => { selectedNumbers=[]; showPanel("amount"); };
 
-  const amountGrid = getEl("amountGrid");
-  if(amountGrid && amountGrid.children.length === 0){
-    [5,10,20,50,100,200,500].forEach(amt=>{
-      const chip = document.createElement("div");
-      chip.className = "chip";
-      chip.textContent = amt;
-      makeInteractive(chip, () => {
-        selectedAmount = amt;
-        const stubAmount = getEl("stubAmount");
-        if(stubAmount) stubAmount.textContent = amt + " Birr";
-        buildNumberGrid();
-        showPanel("number");
-      });
-      amountGrid.appendChild(chip);
-    });
-  }
+const amountGrid = document.getElementById("amountGrid");
+[5,10,20,50,100,200,500].forEach(amt=>{
+  const chip = document.createElement("div");
+  chip.className = "chip";
+  chip.textContent = amt;
+  makeInteractive(chip, () => {
+    selectedAmount = amt;
+    document.getElementById("stubAmount").textContent = amt + " Birr";
+    buildNumberGrid();
+    showPanel("number");
+  });
+  amountGrid.appendChild(chip);
+});
 
-  const confirmBtn = getEl("confirmBetBtn");
-  if(confirmBtn){
-    confirmBtn.onclick = async () => {
-      if(selectedNumbers.length === 0 || !selectedAmount) return;
-      try{
-        const res = await apiFetch(`/api/bet`, {
-          method:"POST",
-          headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({user_id: USER_ID, amount: selectedAmount, numbers: selectedNumbers})
-        });
-        const data = await res.json();
-        if(!res.ok){
-          flashMsg(data.error || "Ticket failed", "error");
-          return;
-        }
-        flashMsg(`Ticket confirmed — ${selectedAmount} Birr on [${selectedNumbers.join(", ")}] at ${data.odds}×`, "wait");
-        refreshBalance();
-        refreshMyBet();
-      }catch(e){
-        flashMsg("Network error placing ticket.", "error");
-      }
-    };
-  }
-}
-
+const numberGrid = document.getElementById("numberGrid");
 function buildNumberGrid(){
   selectedNumbers = [];
-  const numberGrid = getEl("numberGrid");
-  if(!numberGrid) return;
   numberGrid.innerHTML = "";
   for(let i=1;i<=10;i++){
     const chip = document.createElement("div");
@@ -578,68 +525,72 @@ function computeOdds(count){
 }
 
 function updateOddsDisplay(){
-  const pickedCount = getEl("pickedCount");
-  const oddsVal = getEl("oddsVal");
-  const confirmBetBtn = getEl("confirmBetBtn");
-  
-  if(pickedCount) pickedCount.textContent = selectedNumbers.length;
+  document.getElementById("pickedCount").textContent = selectedNumbers.length;
   const odds = computeOdds(selectedNumbers.length);
-  if(oddsVal) oddsVal.textContent = odds ? odds + "×" : "--";
-  if(confirmBetBtn) confirmBetBtn.disabled = selectedNumbers.length === 0;
+  document.getElementById("oddsVal").textContent = odds ? odds + "×" : "--";
+  document.getElementById("confirmBetBtn").disabled = selectedNumbers.length === 0;
 }
+
+document.getElementById("confirmBetBtn").onclick = async () => {
+  if(selectedNumbers.length === 0 || !selectedAmount) return;
+  try{
+    const res = await apiFetch(`/api/bet`, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({user_id: USER_ID, amount: selectedAmount, numbers: selectedNumbers})
+    });
+    const data = await res.json();
+    if(!res.ok){
+      flashMsg(data.error || "Ticket failed", "error");
+      return;
+    }
+    flashMsg(`Ticket confirmed — ${selectedAmount} Birr on [${selectedNumbers.join(", ")}] at ${data.odds}×`, "wait");
+    refreshBalance();
+    refreshMyBet();
+  }catch(e){
+    flashMsg("Network error placing ticket.", "error");
+  }
+};
 
 // ---- countdown / spin / reveal loop ----
 function tick(){
-  // Schedule next frame IMMEDIATELY so the loop can never be killed by errors
-  requestAnimationFrame(tick);
+  const nowMs = nowServer();
+  const nowS = nowMs/1000;
+  const cyclePos = nowS % ROUND_SECONDS;
+  const remaining = ROUND_SECONDS - cyclePos;
+  const displaySeconds = Math.max(0, Math.ceil(remaining - 0.001));
+  countdownEl.textContent = displaySeconds;
 
-  try {
-    const countdownEl = getEl("countdown");
-    const statusLine = getEl("statusLine");
-    const wheelEl = getEl("wheel");
+  updateBulbChase(nowMs, remaining);
 
-    const nowMs = nowServer();
-    const nowS = nowMs/1000;
-    const cyclePos = nowS % ROUND_SECONDS;
-    const remaining = ROUND_SECONDS - cyclePos;
-    const displaySeconds = Math.max(0, Math.ceil(remaining - 0.001));
+  const currentBoundary = Math.ceil(nowS/ROUND_SECONDS) * ROUND_SECONDS;
 
-    if(countdownEl) countdownEl.textContent = displaySeconds;
-
-    updateBulbChase(nowMs, remaining);
-
-    const currentBoundary = Math.ceil(nowS/ROUND_SECONDS) * ROUND_SECONDS;
-
-    if(remaining <= SPIN_LEAD && spinTriggeredForCycle !== currentBoundary){
-      spinTriggeredForCycle = currentBoundary;
-      if(!REDUCE_MOTION && wheelEl) wheelEl.classList.add("spinning");
-      if(statusLine) statusLine.textContent = "Drawing…";
-    }
-
-    const prevBoundary = currentBoundary - ROUND_SECONDS;
-    if(remaining > ROUND_SECONDS - 1 && settleHandledForCycle !== prevBoundary && spinTriggeredForCycle === prevBoundary){
-      settleHandledForCycle = prevBoundary;
-      setTimeout(() => revealResult(prevBoundary), REVEAL_LAG_MS);
-    }
-  } catch(err) {
-    console.error("Frame loop error:", err);
+  if(remaining <= SPIN_LEAD && spinTriggeredForCycle !== currentBoundary){
+    spinTriggeredForCycle = currentBoundary;
+    if(!REDUCE_MOTION) wheelEl.classList.add("spinning");
+    statusLine.textContent = "Drawing…";
   }
+
+  const prevBoundary = currentBoundary - ROUND_SECONDS;
+  if(remaining > ROUND_SECONDS - 1 && settleHandledForCycle !== prevBoundary && spinTriggeredForCycle === prevBoundary){
+    settleHandledForCycle = prevBoundary;
+    setTimeout(() => revealResult(prevBoundary), REVEAL_LAG_MS);
+  }
+
+  requestAnimationFrame(tick);
 }
 
 async function revealResult(boundary){
   flashBulbs();
-  const statusLine = getEl("statusLine");
-  const wheelEl = getEl("wheel");
-
   try{
-    const res = await apiFetch(`/api/result`);
+    const res = await fetch(`${API_BASE}/api/result`);
     const data = await res.json();
-    if(wheelEl) wheelEl.classList.remove("spinning");
+    wheelEl.classList.remove("spinning");
     if(data.number){
       const rot = finalRotationFor(data.number);
       currentRotation = rot;
-      if(wheelEl) wheelEl.style.transform = `rotate(${rot}deg)`;
-      if(statusLine) statusLine.textContent = `Draw result: ${data.number}`;
+      wheelEl.style.transform = `rotate(${rot}deg)`;
+      statusLine.textContent = `Draw result: ${data.number}`;
     }
   }catch(e){}
 
@@ -666,29 +617,15 @@ async function revealResult(boundary){
 async function init(){
   layoutWheelNumbers();
   buildBulbRing();
-  setupEvents();
-
   window.addEventListener("resize", () => { layoutWheelNumbers(); buildBulbRing(); });
-
-  // Start countdown loop right away
+  await syncTime();
+  await refreshBalance();
+  await refreshMyBet();
   requestAnimationFrame(tick);
-
-  // Background network tasks
-  try { await syncTime(); } catch(e){}
-  try { await refreshBalance(); } catch(e){}
-  try { await refreshMyBet(); } catch(e){}
-
   setInterval(refreshBalance, 10000);
   setInterval(syncTime, 60000);
 }
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", init);
-} else {
-  init();
-}
+init();
 </script>
-
 </body>
 </html>
-
