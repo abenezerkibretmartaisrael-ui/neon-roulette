@@ -731,7 +731,7 @@ function finalRotationFor(number){
 function animateSettle(fromDeg, toDeg){
   return new Promise(resolve => {
     const overshoot = REDUCE_MOTION ? 0 : 8;
-    const duration = REDUCE_MOTION ? 900 : 1000;
+    const duration = REDUCE_MOTION ? 900 : 3000;
     const settleTarget = toDeg + overshoot;
     const settleDelta = settleTarget - fromDeg;
     const startTime = performance.now();
