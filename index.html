@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>Lucky Wheel</title>
+<title>አሸናፊው ቁጥር</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=Noto+Sans+Ethiopic:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
   :root{
@@ -20,7 +20,7 @@
     --miss:#ff6b6b;
     --text:#f2eef6;
     --muted:#9a94b3;
-    --font-display:'Bricolage Grotesque', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-display:'Bricolage Grotesque', 'Noto Sans Ethiopic', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-body:'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
@@ -37,6 +37,7 @@
     display:flex; flex-direction:column; align-items:center;
   }
   .app{width:100%; max-width:420px;}
+  .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 
   /* ---- header ---- */
   .topbar{display:flex; justify-content:space-between; align-items:center; gap:10px;}
@@ -46,6 +47,14 @@
     letter-spacing:.02em; color:var(--text);
   }
   .brand svg{color:var(--bulb); flex-shrink:0;}
+  .topbar-right{ display:flex; align-items:center; gap:8px; }
+  .sound-toggle{
+    width:32px; height:32px; border-radius:50%; background:var(--ink-2);
+    border:1px solid rgba(255,255,255,0.08); color:var(--muted);
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    padding:0; transition:transform .1s ease; flex-shrink:0;
+  }
+  .sound-toggle:active{ transform:scale(.9); }
   .balance{
     background:var(--ink-2); border:1px solid rgba(255,255,255,0.08);
     border-radius:999px; padding:7px 14px; display:flex; align-items:center; gap:6px;
@@ -64,32 +73,61 @@
     background-size: 18px 9px; background-repeat:repeat-x; background-position:center;
   }
 
-  /* ---- wheel ---- */
+  /* ---- game row: history rail + wheel ---- */
+  .game-row{ display:flex; align-items:stretch; gap:10px; margin:22px auto 4px; justify-content:center; }
+  .history-rail{
+    width:32px; flex-shrink:0; max-height:230px;
+    display:flex; flex-direction:column; gap:6px;
+    overflow-y:auto; overflow-x:hidden; padding:2px 0;
+    scrollbar-width:none; -ms-overflow-style:none;
+    mask-image:linear-gradient(to bottom, black 78%, transparent 100%);
+    -webkit-mask-image:linear-gradient(to bottom, black 78%, transparent 100%);
+  }
+  .history-rail::-webkit-scrollbar{ display:none; }
+  @keyframes histFadeIn{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:translateY(0); } }
+  .hist-chip{
+    flex-shrink:0; width:28px; height:28px; border-radius:50%;
+    background:var(--ink-2); border:1px solid rgba(255,255,255,0.09); color:var(--text);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-display); font-weight:700; font-size:11.5px;
+    font-variant-numeric:tabular-nums;
+    animation:histFadeIn .3s ease-out backwards;
+  }
+  .hist-chip.latest{
+    background:var(--paper); color:var(--ink); border-color:var(--bulb);
+    box-shadow:0 0 0 2px rgba(255,181,69,0.3);
+  }
+
   .wheel-stage{
-    position:relative; width:min(78vw,300px); height:min(78vw,300px);
-    margin: 26px auto 6px;
+    position:relative; width:min(60vw,230px); height:min(60vw,230px); flex-shrink:0;
   }
   .bulb-ring{ position:absolute; inset:0; pointer-events:none; }
   .bulb{
-    position:absolute; top:50%; left:50%; width:7px; height:7px; margin:-3.5px;
+    position:absolute; top:50%; left:50%; width:6px; height:6px; margin:-3px;
     border-radius:50%; background:rgba(255,181,69,0.22);
     box-shadow:0 0 3px rgba(255,181,69,0.15);
     transition:background .12s ease, box-shadow .12s ease;
   }
-  .bulb.lit{ background:var(--bulb); box-shadow:0 0 8px 2px rgba(255,181,69,0.85), 0 0 18px 5px rgba(255,181,69,0.35); }
+  .bulb.lit{ background:var(--bulb); box-shadow:0 0 7px 2px rgba(255,181,69,0.85), 0 0 16px 4px rgba(255,181,69,0.35); }
   .bulb-ring.flash .bulb{
     background:var(--bulb) !important;
-    box-shadow:0 0 10px 3px rgba(255,181,69,0.95), 0 0 22px 7px rgba(255,181,69,0.55) !important;
+    box-shadow:0 0 9px 3px rgba(255,181,69,0.95), 0 0 20px 6px rgba(255,181,69,0.55) !important;
   }
 
-  .pointer-tag{ position:absolute; top:-6px; left:50%; transform:translateX(-50%); z-index:6; pointer-events:none;
-    filter:drop-shadow(0 3px 5px rgba(0,0,0,0.45)); }
+  .pointer-tag{ position:absolute; top:-5px; left:50%; transform:translateX(-50%); z-index:6; pointer-events:none;
+    transform-origin:50% 0%; filter:drop-shadow(0 3px 5px rgba(0,0,0,0.45)); }
+  @keyframes pointerTick{
+    0%{ transform:translateX(-50%) rotate(0deg); }
+    30%{ transform:translateX(-50%) rotate(-15deg); }
+    62%{ transform:translateX(-50%) rotate(9deg); }
+    100%{ transform:translateX(-50%) rotate(0deg); }
+  }
+  .pointer-tag.tick{ animation:pointerTick 0.16s ease-out; }
 
   .wheel{
-    position:absolute; inset:16px; border-radius:50%;
+    position:absolute; inset:12px; border-radius:50%;
     border:4px solid var(--bulb);
     box-shadow:0 12px 30px rgba(0,0,0,0.5), 0 0 0 6px var(--ink), 0 0 0 8px rgba(255,181,69,0.22);
-    transition:transform 1.15s cubic-bezier(.13,.68,.15,1);
     background:
       radial-gradient(circle at 32% 26%, rgba(255,255,255,0.09), transparent 55%),
       repeating-conic-gradient(from -18deg, rgba(255,181,69,0.55) 0deg .7deg, transparent .7deg 36deg),
@@ -97,14 +135,14 @@
         var(--ink-2) 144deg 180deg, var(--ink-3) 180deg 216deg, var(--ink-2) 216deg 252deg, var(--ink-3) 252deg 288deg,
         var(--ink-2) 288deg 324deg, var(--ink-3) 324deg 360deg);
   }
-  .wheel.spinning{ transition:none; animation:spinfast .55s linear infinite; }
+  .wheel.spinning{ animation:spinfast .55s linear infinite; }
   @keyframes spinfast{ from{transform:rotate(0deg);} to{transform:rotate(360deg);} }
 
   .num{
-    position:absolute; width:28px; height:28px; transform:translate(-50%,-50%);
+    position:absolute; width:22px; height:22px; transform:translate(-50%,-50%);
     border-radius:50%; background:var(--paper); color:var(--ink);
     display:flex; align-items:center; justify-content:center;
-    font-family:var(--font-display); font-weight:700; font-size:13px;
+    font-family:var(--font-display); font-weight:700; font-size:11px;
     box-shadow:0 2px 4px rgba(0,0,0,0.35), inset 0 -2px 0 rgba(0,0,0,0.08);
   }
 
@@ -114,9 +152,21 @@
     border-radius:50%; background:var(--ink-2); border:2px solid var(--bulb);
     display:flex; flex-direction:column; align-items:center; justify-content:center;
     box-shadow:0 4px 14px rgba(0,0,0,0.45); z-index:4;
+    transition:transform 0.4s cubic-bezier(.34,1.56,.64,1), box-shadow 0.4s ease;
   }
-  .hub-num{ font-family:var(--font-display); font-weight:800; font-size:clamp(22px,7vw,28px); line-height:1; color:var(--paper); font-variant-numeric:tabular-nums; }
-  .hub-label{ font-family:var(--font-body); font-size:8.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--muted); margin-top:3px; }
+  .hub-num{ font-family:var(--font-display); font-weight:800; font-size:clamp(17px,5.2vw,21px); line-height:1; color:var(--paper); font-variant-numeric:tabular-nums; }
+  .hub-label{ font-family:var(--font-body); font-size:7.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-top:3px; }
+  .hub-num.reveal-pop{ animation:revealPop 0.5s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes revealPop{ 0%{ transform:scale(0.4); opacity:0; } 60%{ transform:scale(1.18); opacity:1; } 100%{ transform:scale(1); opacity:1; } }
+
+  .hub.reveal{
+    transform:translate(-50%,-50%) scale(1.55);
+    box-shadow:0 8px 28px rgba(0,0,0,0.55), 0 0 0 3px var(--bulb), 0 0 34px 10px rgba(255,181,69,0.55);
+    z-index:8;
+  }
+  .hub.reveal.win{
+    box-shadow:0 8px 28px rgba(0,0,0,0.55), 0 0 0 3px var(--ticket), 0 0 34px 12px rgba(47,230,198,0.6);
+  }
 
   .wheel-stage.win-pulse .wheel{ animation:winPulse 1s ease-out; }
   @keyframes winPulse{
@@ -124,7 +174,16 @@
     100%{ box-shadow:0 0 0 34px rgba(47,230,198,0), 0 12px 30px rgba(0,0,0,0.5), 0 0 0 6px var(--ink), 0 0 0 8px rgba(255,181,69,0.22); }
   }
 
-  .status{ text-align:center; color:var(--muted); font-size:12.5px; min-height:16px; margin:4px 0 2px; }
+  /* ---- pot + status ---- */
+  .pot-pill{
+    display:flex; align-items:center; justify-content:center; gap:5px;
+    margin:6px auto 2px; padding:6px 14px; width:fit-content;
+    background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07);
+    border-radius:999px; font-size:12px; color:var(--muted);
+  }
+  .pot-pill b{ font-family:var(--font-display); color:var(--bulb); font-size:13.5px; font-variant-numeric:tabular-nums; }
+
+  .status{ text-align:center; color:var(--muted); font-size:12.5px; min-height:16px; margin:6px 0 2px; }
 
   #msgBox{ min-height:0; }
   .msg{ text-align:center; padding:11px; border-radius:12px; margin-top:10px; font-weight:600; font-size:13.5px; }
@@ -132,6 +191,42 @@
   .msg.lose{ background:rgba(255,107,107,0.10); color:var(--miss); }
   .msg.error{ background:rgba(255,107,107,0.10); color:var(--miss); }
   .msg.wait{ background:rgba(255,181,69,0.12); color:var(--bulb); }
+
+  /* ---- confetti ---- */
+  .confetti-layer{ position:fixed; inset:0; pointer-events:none; z-index:50; overflow:hidden; }
+  .confetti-piece{
+    position:absolute; top:-10px; left:var(--x); opacity:.95; border-radius:1px;
+    animation:confettiFall var(--dur) var(--delay) ease-in forwards;
+  }
+  @keyframes confettiFall{
+    0%{ transform:translate(0,0) rotate(0deg); opacity:1; }
+    100%{ transform:translate(var(--dx),100vh) rotate(var(--rot)); opacity:0; }
+  }
+
+  /* ---- live bet feed toasts ---- */
+  .bet-toast-layer{
+    position:fixed; top:36%; left:50%; transform:translateX(-50%);
+    z-index:40; pointer-events:none;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    width:min(90vw,360px);
+  }
+  .bet-toast{
+    background:rgba(21,19,31,0.92); backdrop-filter:blur(6px);
+    border:1px solid rgba(47,230,198,0.45);
+    box-shadow:0 0 0 1px rgba(47,230,198,0.12), 0 8px 22px rgba(0,0,0,0.5), 0 0 18px rgba(47,230,198,0.28);
+    border-radius:999px; padding:8px 16px;
+    font-size:12.5px; font-weight:600; color:var(--text);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
+    animation:betToastPop 1.7s ease-out forwards;
+  }
+  .bet-toast .bt-name{ color:var(--ticket); font-weight:700; }
+  .bet-toast .bt-amt{ color:var(--ticket); font-family:var(--font-display); font-weight:800; }
+  @keyframes betToastPop{
+    0%{ opacity:0; transform:translateY(8px) scale(.92); }
+    12%{ opacity:1; transform:translateY(0) scale(1); }
+    75%{ opacity:1; transform:translateY(0) scale(1); }
+    100%{ opacity:0; transform:translateY(-10px) scale(.96); }
+  }
 
   /* ---- ticket panels ---- */
   .ticket{
@@ -146,15 +241,18 @@
   .ticket .body{ padding:14px 18px 18px; }
   .tagline{ margin:0 0 14px; color:var(--muted); font-size:13.5px; line-height:1.5; }
 
-  .grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
-  .chip{
-    padding:13px 0; text-align:center; border-radius:10px; background:var(--ink);
-    border:1px solid rgba(255,255,255,0.09); font-weight:700; font-size:14.5px;
-    cursor:pointer; user-select:none; font-variant-numeric:tabular-nums;
-    transition:transform .1s ease;
+  .amount-input{
+    width:100%; padding:16px; border-radius:10px; background:var(--ink);
+    border:1px solid rgba(255,255,255,0.09); color:var(--text);
+    font-family:var(--font-display); font-weight:700; font-size:22px;
+    text-align:center; font-variant-numeric:tabular-nums;
+    -moz-appearance:textfield;
   }
-  .chip:active{ transform:scale(.94); }
-  .chip.selected{ background:linear-gradient(135deg,var(--bulb),var(--bulb-2)); color:var(--ink); border-color:transparent; }
+  .amount-input::-webkit-outer-spin-button, .amount-input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .amount-input:focus{ outline:none; border-color:var(--bulb); }
+  .amount-input::placeholder{ color:var(--muted); font-weight:600; }
+  .amount-hint{ margin:8px 2px 0; font-size:12px; color:var(--muted); text-align:center; }
+  .amount-hint.error{ color:var(--miss); }
 
   .numgrid{ display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:2px; }
   .numchip{
@@ -165,7 +263,7 @@
   .numchip:active{ transform:scale(.94); }
   .numchip.selected{ background:var(--ticket); color:#04241d; border-color:transparent; }
 
-  .chip:focus-visible, .numchip:focus-visible, .btn:focus-visible{
+  .amount-input:focus-visible, .numchip:focus-visible, .btn:focus-visible, .sound-toggle:focus-visible{
     outline:2px solid var(--bulb); outline-offset:2px;
   }
 
@@ -189,11 +287,16 @@
   .panel-enter{ animation:panelIn .22s ease-out; }
 
   @media (prefers-reduced-motion: reduce){
-    .wheel{ transition-duration:.4s; }
     .wheel.spinning{ animation:none; }
     .bulb{ transition:none; }
     .wheel-stage.win-pulse .wheel{ animation:none; }
     .panel-enter{ animation:none; }
+    .pointer-tag.tick{ animation:none; }
+    .hub{ transition:none; }
+    .hub-num.reveal-pop{ animation:none; }
+    .confetti-piece{ display:none; }
+    .bet-toast-layer{ display:none; }
+    .hist-chip{ animation:none; }
   }
 </style>
 </head>
@@ -203,39 +306,57 @@
   <div class="topbar">
     <div class="brand">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"/></svg>
-      LUCKY WHEEL
+      አሸናፊው ቁጥር
     </div>
-    <div class="balance">
-      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"/></svg>
-      <span id="balanceVal">--</span><span class="unit">Birr</span>
+    <div class="topbar-right">
+      <button class="sound-toggle" id="soundToggle" type="button" aria-label="Toggle sound">
+        <svg id="soundIconOn" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor" stroke="none"/>
+          <path d="M16.5 8a5 5 0 010 8"/>
+        </svg>
+        <svg id="soundIconOff" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <path d="M3 9v6h4l5 4V5L7 9H3z" fill="currentColor" stroke="none"/>
+          <path d="M16 9l5 6M21 9l-5 6"/>
+        </svg>
+      </button>
+      <div class="balance">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"/></svg>
+        <span id="balanceVal">--</span><span class="unit">Birr</span>
+      </div>
     </div>
   </div>
 
   <div class="perf"></div>
 
-  <div class="wheel-stage" id="wheelStage">
-    <div class="bulb-ring" id="bulbRing"></div>
-    <div class="pointer-tag">
-      <svg width="26" height="32" viewBox="0 0 26 32" fill="none">
-        <path d="M2 2 H24 V18 L13 30 L2 18 Z" fill="var(--paper)" stroke="#15131f" stroke-width="2"/>
-        <circle cx="13" cy="9" r="2.6" fill="#15131f"/>
-      </svg>
-    </div>
-    <div class="wheel" id="wheel"></div>
-    <div class="hub">
-      <div class="hub-num" id="countdown">60</div>
-      <div class="hub-label">next draw</div>
+  <div class="game-row">
+    <div class="history-rail" id="historyRail" aria-label="Recent winning numbers"></div>
+    <div class="wheel-stage" id="wheelStage">
+      <div class="bulb-ring" id="bulbRing"></div>
+      <div class="pointer-tag" id="pointerTag">
+        <svg width="22" height="27" viewBox="0 0 22 27" fill="none">
+          <path d="M2 2 H20 V14 L11 25 L2 14 Z" fill="var(--paper)" stroke="#15131f" stroke-width="2"/>
+          <circle cx="11" cy="8" r="2.2" fill="#15131f"/>
+        </svg>
+      </div>
+      <div class="wheel" id="wheel"></div>
+      <div class="hub" id="hub">
+        <div class="hub-num" id="countdown">60</div>
+        <div class="hub-label" id="hubLabel">next draw</div>
+      </div>
     </div>
   </div>
 
+  <div class="pot-pill">This round <b id="potVal">0</b> Birr staked</div>
   <div class="status" id="statusLine">Numbers are drawn live, every minute.</div>
   <div id="msgBox"></div>
+  <div class="sr-only" id="srAnnounce" aria-live="polite"></div>
+  <div class="bet-toast-layer" id="betToastLayer"></div>
 
   <!-- Step 0 -->
   <div class="ticket" id="startPanel">
     <div class="body" style="padding-top:18px;">
       <p class="tagline">Choose your Birr, pick your numbers, ride the draw.</p>
-      <button class="btn btn-primary" id="startBetBtn">Get a ticket</button>
+      <button class="btn btn-primary" id="startBetBtn">Bet</button>
     </div>
   </div>
 
@@ -249,7 +370,9 @@
     </div>
     <div class="perf"></div>
     <div class="body">
-      <div class="grid" id="amountGrid"></div>
+      <input type="number" class="amount-input" id="amountInput" inputmode="decimal" placeholder="Enter amount" min="5" max="5000" step="0.01">
+      <p class="amount-hint" id="amountHint">5 – 5000 Birr per ticket</p>
+      <button class="btn btn-primary" id="continueAmountBtn">Continue</button>
       <button class="btn btn-ghost" id="cancelAmountBtn">Cancel</button>
     </div>
   </div>
@@ -303,9 +426,9 @@ const USER_ID = (tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDat
   : (params.get("user_id") || "");
 const TG_INIT_DATA = (tg && tg.initData) ? tg.initData : "";
 
-// Leave this empty for local testing (server.py serves this same file, so
-// relative paths already hit the right place). Before publishing this file
-// to GitHub Pages, set it to the backend's Wispbyte URL, no trailing slash:
+// Leave empty for local testing (server.py serves this file too, so relative
+// paths already hit the right place). Before publishing to GitHub Pages,
+// set this to the backend's Wispbyte URL, no trailing slash:
 //   const API_BASE = "https://abena.freesrv.com/";
 const API_BASE = "https://abena.freesrv.com/";
 
@@ -319,6 +442,61 @@ const SPIN_LEAD = 3;
 const REVEAL_LAG_MS = 500;
 const REDUCE_MOTION = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+// ---------------------------------------------------------------- sound ---
+const SoundFX = {
+  ctx: null,
+  muted: false,
+  unlock(){
+    if(this.ctx) return;
+    try{ this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){}
+  },
+  tick(progress){
+    if(this.muted || !this.ctx) return;
+    const ctx = this.ctx, t0 = ctx.currentTime;
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    const freq = 1400 - (progress||0)*500;
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, t0);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.12, t0+0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0+0.035);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0); osc.stop(t0+0.04);
+  },
+  clockTick(){
+    // the soft once-a-second "time passing" tick — quieter and softer
+    // timbre than the wheel's mechanical tick() above, so the two read as
+    // different things when they're both in play near the end of a round
+    if(this.muted || !this.ctx) return;
+    const ctx = this.ctx, t0 = ctx.currentTime;
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1800, t0);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.05, t0+0.003);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0+0.02);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0); osc.stop(t0+0.03);
+  },
+  win(){
+    if(this.muted || !this.ctx) return;
+    const ctx = this.ctx;
+    [523.25, 659.25, 783.99, 1046.5].forEach((freq,i) => {
+      const t0 = ctx.currentTime + i*0.09;
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(0.16, t0+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0+0.28);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0); osc.stop(t0+0.3);
+    });
+  },
+  toggleMute(){ this.muted = !this.muted; return this.muted; }
+};
+document.addEventListener('pointerdown', () => SoundFX.unlock(), {once:true});
+
 let serverOffset = 0;
 let selectedAmount = null;
 let selectedNumbers = [];
@@ -327,19 +505,41 @@ let settleHandledForCycle = -1;
 let currentRotation = 0;
 let bulbs = [];
 let lastBulbIdx = -1;
+let currentPotVal = 0;
+let revealActive = false;
+let revealTimer = null;
+let lastTickedSecond = null;
+let spinTickInterval = null;
 
 const wheelStageEl = document.getElementById("wheelStage");
 const wheelEl = document.getElementById("wheel");
 const bulbRingEl = document.getElementById("bulbRing");
+const pointerTagEl = document.getElementById("pointerTag");
+const hubEl = document.getElementById("hub");
+const hubLabelEl = document.getElementById("hubLabel");
 const countdownEl = document.getElementById("countdown");
 const statusLine = document.getElementById("statusLine");
 const balanceVal = document.getElementById("balanceVal");
 const msgBox = document.getElementById("msgBox");
+const historyRailEl = document.getElementById("historyRail");
+const potValEl = document.getElementById("potVal");
+const srAnnounceEl = document.getElementById("srAnnounce");
+const betToastLayerEl = document.getElementById("betToastLayer");
+let lastBetEventId = 0;
+const soundToggleBtn = document.getElementById("soundToggle");
+const soundIconOn = document.getElementById("soundIconOn");
+const soundIconOff = document.getElementById("soundIconOff");
 
 const startPanel = document.getElementById("startPanel");
 const amountPanel = document.getElementById("amountPanel");
 const numberPanel = document.getElementById("numberPanel");
 const waitingPanel = document.getElementById("waitingPanel");
+
+soundToggleBtn.onclick = () => {
+  const muted = SoundFX.toggleMute();
+  soundIconOn.style.display = muted ? 'none' : '';
+  soundIconOff.style.display = muted ? '' : 'none';
+};
 
 function showPanel(name){
   const map = {start:startPanel, amount:amountPanel, number:numberPanel, waiting:waitingPanel};
@@ -363,12 +563,26 @@ function makeInteractive(el, handler){
   el.addEventListener("keydown", (e)=>{ if(e.key === "Enter" || e.key === " "){ e.preventDefault(); handler(); } });
 }
 
+function animateNumber(el, from, to, duration=650){
+  if(REDUCE_MOTION){ el.textContent = Number(to).toFixed(2); return; }
+  const startTime = performance.now();
+  const change = to - from;
+  function frame(now){
+    const t = Math.min(1, (now-startTime)/duration);
+    const eased = 1 - Math.pow(1-t, 3);
+    el.textContent = (from + change*eased).toFixed(2);
+    if(t < 1) requestAnimationFrame(frame);
+    else el.textContent = Number(to).toFixed(2);
+  }
+  requestAnimationFrame(frame);
+}
+
 // ---- wheel number layout ----
 function layoutWheelNumbers(){
   wheelEl.querySelectorAll(".num").forEach(n=>n.remove());
-  const size = wheelEl.clientWidth || 268;
+  const size = wheelEl.clientWidth || 206;
   const center = size/2;
-  const r = center - 30;
+  const r = center * 0.80;
   for(let i=1;i<=10;i++){
     const angleDeg = (i-1)*36;
     const rad = (angleDeg - 90) * Math.PI/180;
@@ -387,7 +601,7 @@ function layoutWheelNumbers(){
 function buildBulbRing(){
   bulbRingEl.innerHTML = "";
   bulbs = [];
-  const stageSize = wheelStageEl.clientWidth || 300;
+  const stageSize = wheelStageEl.clientWidth || 230;
   const radius = stageSize/2 - 3;
   const count = 20;
   for(let i=0;i<count;i++){
@@ -421,6 +635,86 @@ function winPulse(){
   setTimeout(()=> wheelStageEl.classList.remove("win-pulse"), 1100);
 }
 
+function pointerWobble(){
+  pointerTagEl.classList.remove("tick");
+  void pointerTagEl.offsetWidth;
+  pointerTagEl.classList.add("tick");
+}
+
+function spawnConfetti(){
+  if(REDUCE_MOTION) return;
+  const colors = ['#ffb545','#ff8f3d','#2fe6c6','#f3e6c9'];
+  const container = document.createElement('div');
+  container.className = 'confetti-layer';
+  document.body.appendChild(container);
+  for(let i=0;i<46;i++){
+    const el = document.createElement('span');
+    el.className = 'confetti-piece';
+    const size = 6 + Math.random()*6;
+    el.style.setProperty('--x', (50 + (Math.random()*60-30)) + 'vw');
+    el.style.setProperty('--dx', (Math.random()*140-70) + 'px');
+    el.style.setProperty('--rot', (Math.random()*720-360) + 'deg');
+    el.style.setProperty('--dur', (1.6 + Math.random()*1.1) + 's');
+    el.style.setProperty('--delay', (Math.random()*0.25) + 's');
+    el.style.width = size + 'px';
+    el.style.height = (size*0.4) + 'px';
+    el.style.background = colors[i % colors.length];
+    container.appendChild(el);
+  }
+  setTimeout(()=> container.remove(), 3200);
+}
+
+function spawnBetToast(name, amount){
+  if(REDUCE_MOTION) return;
+  const toast = document.createElement('div');
+  toast.className = 'bet-toast';
+  const nameSpan = document.createElement('span');
+  nameSpan.className = 'bt-name';
+  nameSpan.textContent = name; // textContent, not innerHTML — name comes from a
+                                // user-editable Telegram profile field, so it must
+                                // never be parsed as HTML
+  const amtSpan = document.createElement('span');
+  amtSpan.className = 'bt-amt';
+  amtSpan.textContent = Number(amount).toFixed(2) + ' Birr';
+  toast.appendChild(nameSpan);
+  toast.appendChild(document.createTextNode(' bet '));
+  toast.appendChild(amtSpan);
+  betToastLayerEl.appendChild(toast);
+  setTimeout(() => toast.remove(), 1750);
+}
+
+async function refreshBetFeed(){
+  try{
+    const res = await fetch(`${API_BASE}/api/betfeed?since=${lastBetEventId}`);
+    const data = await res.json();
+    const allEvents = data.events || [];
+    if(allEvents.length){
+      lastBetEventId = Math.max(lastBetEventId, ...allEvents.map(e => e.id));
+    }
+    allEvents.slice(-5).forEach(ev => spawnBetToast(ev.name, ev.amount)); // cap a burst to the 5 most recent
+  }catch(e){}
+}
+
+function showBigReveal(number, won){
+  hubEl.classList.add('reveal');
+  hubEl.classList.toggle('win', won === true);
+  hubLabelEl.textContent = 'winning number';
+  countdownEl.textContent = number;
+  countdownEl.classList.remove('reveal-pop');
+  void countdownEl.offsetWidth;
+  countdownEl.classList.add('reveal-pop');
+  srAnnounceEl.textContent = `Winning number ${number}`;
+  revealActive = true;
+  clearTimeout(revealTimer);
+  revealTimer = setTimeout(hideBigReveal, 2200);
+}
+function hideBigReveal(){
+  hubEl.classList.remove('reveal','win');
+  hubLabelEl.textContent = 'next draw';
+  countdownEl.classList.remove('reveal-pop');
+  revealActive = false;
+}
+
 function finalRotationFor(number){
   const segAngle = (number-1)*36;
   const targetMod = (360 - segAngle) % 360;
@@ -429,6 +723,51 @@ function finalRotationFor(number){
   let target = base + extraSpins + targetMod;
   if(target <= currentRotation) target += 360;
   return target;
+}
+
+// realistic settle: decelerates with easing, ticks the pointer + sound on
+// every wedge crossing (throttled so the fast phase doesn't flood audio),
+// then a small spring-back overshoot for a mechanical "clunk".
+function animateSettle(fromDeg, toDeg){
+  return new Promise(resolve => {
+    const overshoot = REDUCE_MOTION ? 0 : 6;
+    const duration = REDUCE_MOTION ? 900 : 3200;
+    const settleTarget = toDeg + overshoot;
+    const settleDelta = settleTarget - fromDeg;
+    const startTime = performance.now();
+    let lastSegCount = Math.floor(fromDeg/36);
+    let lastTickSoundAt = 0;
+
+    function frame(now){
+      const t = Math.min(1, (now-startTime)/duration);
+      const eased = 1 - Math.pow(1-t, 5);
+      const current = fromDeg + settleDelta*eased;
+      wheelEl.style.transform = `rotate(${current}deg)`;
+
+      const segCount = Math.floor(current/36);
+      if(segCount !== lastSegCount){
+        lastSegCount = segCount;
+        if(!REDUCE_MOTION) pointerWobble();
+        const now2 = performance.now();
+        if(now2 - lastTickSoundAt > 45){
+          lastTickSoundAt = now2;
+          SoundFX.tick(t);
+        }
+      }
+
+      if(t < 1){
+        requestAnimationFrame(frame);
+      } else if(overshoot > 0){
+        wheelEl.style.transition = 'transform 0.22s cubic-bezier(.34,1.56,.64,1)';
+        requestAnimationFrame(() => { wheelEl.style.transform = `rotate(${toDeg}deg)`; });
+        setTimeout(() => { wheelEl.style.transition = 'none'; resolve(); }, 240);
+      } else {
+        wheelEl.style.transform = `rotate(${toDeg}deg)`;
+        resolve();
+      }
+    }
+    requestAnimationFrame(frame);
+  });
 }
 
 // ---- server time sync ----
@@ -442,14 +781,48 @@ async function syncTime(){
 }
 function nowServer(){ return Date.now() + serverOffset; }
 
-// ---- balance ----
+// ---- balance / pot / history ----
 async function refreshBalance(){
   if(!USER_ID) { balanceVal.textContent = "—"; return; }
   try{
     const res = await apiFetch(`/api/balance?user_id=${encodeURIComponent(USER_ID)}`);
     if(!res.ok){ balanceVal.textContent = "?"; return; }
     const data = await res.json();
-    balanceVal.textContent = data.balance;
+    balanceVal.textContent = Number(data.balance).toFixed(2);
+  }catch(e){}
+}
+
+async function refreshPot(){
+  try{
+    const res = await fetch(`${API_BASE}/api/roundstate`);
+    const data = await res.json();
+    const newVal = Number(data.total_pot || 0);
+    if(Math.abs(newVal - currentPotVal) > 0.001){
+      animateNumber(potValEl, currentPotVal, newVal);
+      currentPotVal = newVal;
+    }
+  }catch(e){}
+}
+
+function renderHistory(numbers){
+  historyRailEl.innerHTML = "";
+  numbers.forEach((n,i) => {
+    const chip = document.createElement("div");
+    chip.className = "hist-chip" + (i===0 ? " latest" : "");
+    chip.textContent = n;
+    if(REDUCE_MOTION){
+      chip.style.animation = "none";
+    } else {
+      chip.style.animationDelay = Math.min(i*15, 200) + "ms";
+    }
+    historyRailEl.appendChild(chip);
+  });
+}
+async function refreshHistory(){
+  try{
+    const res = await fetch(`${API_BASE}/api/history`);
+    const data = await res.json();
+    renderHistory(data.numbers || []);
   }catch(e){}
 }
 
@@ -461,7 +834,7 @@ async function refreshMyBet(){
     const data = await res.json();
     if(data.active){
       document.getElementById("waitingText").textContent =
-        `${data.amount} Birr on [${data.numbers.join(", ")}] at ${data.odds}×. This ticket is in the drum until the draw finishes.`;
+        `${Number(data.amount).toFixed(2)} Birr on [${data.numbers.join(", ")}] at ${data.odds}×. This ticket is in the drum until the draw finishes.`;
       showPanel("waiting");
     } else {
       showPanel("start");
@@ -472,24 +845,56 @@ async function refreshMyBet(){
 // ---- betting flow ----
 document.getElementById("startBetBtn").onclick = () => {
   if(!USER_ID){ flashMsg("Open this from Telegram, or add ?user_id= for testing.", "error"); return; }
+  amountInput.value = "";
+  amountHint.textContent = DEFAULT_AMOUNT_HINT;
+  amountHint.classList.remove("error");
   showPanel("amount");
+  amountInput.focus();
 };
 document.getElementById("cancelAmountBtn").onclick = () => showPanel("start");
 document.getElementById("cancelNumberBtn").onclick = () => { selectedNumbers=[]; showPanel("amount"); };
 
-const amountGrid = document.getElementById("amountGrid");
-[5,10,20,50,100,200,500].forEach(amt=>{
-  const chip = document.createElement("div");
-  chip.className = "chip";
-  chip.textContent = amt;
-  makeInteractive(chip, () => {
-    selectedAmount = amt;
-    document.getElementById("stubAmount").textContent = amt + " Birr";
-    buildNumberGrid();
-    showPanel("number");
-  });
-  amountGrid.appendChild(chip);
+const MIN_BET = 5;
+const MAX_BET = 5000; // mirrors server.py, both bounds inclusive
+const DEFAULT_AMOUNT_HINT = `${MIN_BET} – ${MAX_BET} Birr per ticket`;
+const amountInput = document.getElementById("amountInput");
+const amountHint = document.getElementById("amountHint");
+
+amountInput.addEventListener("input", () => {
+  amountHint.textContent = DEFAULT_AMOUNT_HINT;
+  amountHint.classList.remove("error");
 });
+amountInput.addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){ e.preventDefault(); document.getElementById("continueAmountBtn").click(); }
+});
+
+document.getElementById("continueAmountBtn").onclick = () => {
+  const raw = amountInput.value.trim();
+  const val = Number(raw);
+  if(raw === "" || !Number.isFinite(val)){
+    amountHint.textContent = "Enter a valid amount.";
+    amountHint.classList.add("error");
+    return;
+  }
+  const cents = Math.round(val * 100);
+  if(Math.abs(val * 100 - cents) > 1e-6){
+    amountHint.textContent = "Use at most 2 decimal places.";
+    amountHint.classList.add("error");
+    return;
+  }
+  const normalized = cents / 100;
+  if(normalized < MIN_BET || normalized > MAX_BET){
+    amountHint.textContent = `Must be between ${MIN_BET} and ${MAX_BET} Birr.`;
+    amountHint.classList.add("error");
+    return;
+  }
+  selectedAmount = normalized;
+  amountHint.textContent = DEFAULT_AMOUNT_HINT;
+  amountHint.classList.remove("error");
+  document.getElementById("stubAmount").textContent = normalized.toFixed(2) + " Birr";
+  buildNumberGrid();
+  showPanel("number");
+};
 
 const numberGrid = document.getElementById("numberGrid");
 function buildNumberGrid(){
@@ -518,9 +923,8 @@ function buildNumberGrid(){
 
 function computeOdds(count){
   if(count <= 0) return null;
-  const fair = 10/count;
-  let odds = fair * 1.0;
-  odds = Math.max(1.20, Math.min(10, odds));
+  let odds = 10/count;
+  odds = Math.max(1.25, Math.min(10, odds));
   return Math.round(odds*100)/100;
 }
 
@@ -544,9 +948,10 @@ document.getElementById("confirmBetBtn").onclick = async () => {
       flashMsg(data.error || "Ticket failed", "error");
       return;
     }
-    flashMsg(`Ticket confirmed — ${selectedAmount} Birr on [${selectedNumbers.join(", ")}] at ${data.odds}×`, "wait");
+    flashMsg(`Ticket confirmed — ${selectedAmount.toFixed(2)} Birr on [${selectedNumbers.join(", ")}] at ${data.odds}×`, "wait");
     refreshBalance();
     refreshMyBet();
+    refreshPot();
   }catch(e){
     flashMsg("Network error placing ticket.", "error");
   }
@@ -559,7 +964,19 @@ function tick(){
   const cyclePos = nowS % ROUND_SECONDS;
   const remaining = ROUND_SECONDS - cyclePos;
   const displaySeconds = Math.max(0, Math.ceil(remaining - 0.001));
-  countdownEl.textContent = displaySeconds;
+
+  if(!revealActive){
+    countdownEl.textContent = displaySeconds;
+  }
+
+  // soft once-a-second "clock" tick while waiting — handed off to the
+  // wheel's own faster ticking once the spin actually starts
+  if(displaySeconds !== lastTickedSecond){
+    lastTickedSecond = displaySeconds;
+    if(remaining > SPIN_LEAD && !revealActive){
+      SoundFX.clockTick();
+    }
+  }
 
   updateBulbChase(nowMs, remaining);
 
@@ -568,6 +985,12 @@ function tick(){
   if(remaining <= SPIN_LEAD && spinTriggeredForCycle !== currentBoundary){
     spinTriggeredForCycle = currentBoundary;
     if(!REDUCE_MOTION) wheelEl.classList.add("spinning");
+    if(!spinTickInterval){
+      // fast constant buzz from the moment the spin starts, matching the
+      // visual spinfast rate — animateSettle() takes over (and decelerates
+      // it) once the real number is known, so this gets cleared there
+      spinTickInterval = setInterval(() => SoundFX.tick(0), 62);
+    }
     statusLine.textContent = "Drawing…";
   }
 
@@ -582,36 +1005,50 @@ function tick(){
 
 async function revealResult(boundary){
   flashBulbs();
+  statusLine.textContent = "Landing…";
+  let numberToShow = null;
+
   try{
     const res = await fetch(`${API_BASE}/api/result`);
     const data = await res.json();
     wheelEl.classList.remove("spinning");
+    if(spinTickInterval){ clearInterval(spinTickInterval); spinTickInterval = null; }
     if(data.number){
-      const rot = finalRotationFor(data.number);
-      currentRotation = rot;
-      wheelEl.style.transform = `rotate(${rot}deg)`;
-      statusLine.textContent = `Draw result: ${data.number}`;
+      numberToShow = data.number;
+      const target = finalRotationFor(data.number);
+      await animateSettle(currentRotation, target);
+      currentRotation = target;
     }
   }catch(e){}
 
-  await refreshBalance();
+  statusLine.textContent = "Numbers are drawn live, every minute.";
 
+  let outcome = null;
   if(USER_ID){
     try{
-      const res = await apiFetch(`/api/lastresult?user_id=${encodeURIComponent(USER_ID)}`);
-      const data = await res.json();
-      if(data.has_result){
-        if(data.won){
-          flashMsg(`Winning number ${data.number} — you won ${data.payout} Birr.`, "win");
-          winPulse();
-        } else {
-          flashMsg(`Winning number ${data.number}. Not this round.`, "lose");
-        }
-      }
+      const r = await apiFetch(`/api/lastresult?user_id=${encodeURIComponent(USER_ID)}`);
+      outcome = await r.json();
     }catch(e){}
   }
 
+  if(numberToShow){
+    showBigReveal(numberToShow, outcome && outcome.has_result ? outcome.won : null);
+  }
+  if(outcome && outcome.has_result){
+    if(outcome.won){
+      flashMsg(`Winning number ${outcome.number} — you won ${Number(outcome.payout).toFixed(2)} Birr.`, "win");
+      spawnConfetti();
+      winPulse();
+      SoundFX.win();
+    } else {
+      flashMsg(`Winning number ${outcome.number}. Not this round.`, "lose");
+    }
+  }
+
+  refreshBalance();
   refreshMyBet();
+  refreshHistory();
+  refreshPot();
 }
 
 async function init(){
@@ -621,11 +1058,26 @@ async function init(){
   await syncTime();
   await refreshBalance();
   await refreshMyBet();
+  await refreshHistory();
+  await refreshPot();
+  try{
+    // catch the feed cursor up to "now" silently, so opening the app doesn't
+    // immediately replay a burst of toasts for bets that already happened
+    const res = await fetch(`${API_BASE}/api/betfeed?since=0`);
+    const data = await res.json();
+    if(data.events && data.events.length){
+      lastBetEventId = Math.max(0, ...data.events.map(e => e.id));
+    }
+  }catch(e){}
   requestAnimationFrame(tick);
   setInterval(refreshBalance, 10000);
+  setInterval(refreshPot, 4000);
+  setInterval(refreshBetFeed, 1600);
   setInterval(syncTime, 60000);
 }
 init();
 </script>
 </body>
 </html>
+
+
