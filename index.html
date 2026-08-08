@@ -118,11 +118,11 @@
     transform-origin:50% 0%; filter:drop-shadow(0 3px 5px rgba(0,0,0,0.45)); }
   @keyframes pointerTick{
     0%{ transform:translateX(-50%) rotate(0deg); }
-    30%{ transform:translateX(-50%) rotate(-15deg); }
-    62%{ transform:translateX(-50%) rotate(9deg); }
+    30%{ transform:translateX(-50%) rotate(-24deg); }
+    62%{ transform:translateX(-50%) rotate(14deg); }
     100%{ transform:translateX(-50%) rotate(0deg); }
   }
-  .pointer-tag.tick{ animation:pointerTick 0.16s ease-out; }
+  .pointer-tag.tick{ animation:pointerTick 0.18s ease-out; }
 
   .wheel{
     position:absolute; inset:12px; border-radius:50%;
@@ -730,7 +730,7 @@ function finalRotationFor(number){
 // then a small spring-back overshoot for a mechanical "clunk".
 function animateSettle(fromDeg, toDeg){
   return new Promise(resolve => {
-    const overshoot = REDUCE_MOTION ? 0 : 8;
+    const overshoot = REDUCE_MOTION ? 0 : 16;
     const duration = REDUCE_MOTION ? 900 : 3000;
     const settleTarget = toDeg + overshoot;
     const settleDelta = settleTarget - fromDeg;
@@ -740,7 +740,7 @@ function animateSettle(fromDeg, toDeg){
 
     function frame(now){
       const t = Math.min(1, (now-startTime)/duration);
-      const eased = 1 - Math.pow(1-t, 3);
+      const eased = 1 - Math.pow(1-t, 4);
       const current = fromDeg + settleDelta*eased;
       wheelEl.style.transform = `rotate(${current}deg)`;
 
@@ -749,7 +749,7 @@ function animateSettle(fromDeg, toDeg){
         lastSegCount = segCount;
         if(!REDUCE_MOTION) pointerWobble();
         const now2 = performance.now();
-        if(now2 - lastTickSoundAt > 45){
+        if(now2 - lastTickSoundAt > 35){
           lastTickSoundAt = now2;
           SoundFX.tick(t);
         }
@@ -758,9 +758,9 @@ function animateSettle(fromDeg, toDeg){
       if(t < 1){
         requestAnimationFrame(frame);
       } else if(overshoot > 0){
-        wheelEl.style.transition = 'transform 0.35s cubic-bezier(.34,1.56,.64,1)';
+        wheelEl.style.transition = 'transform 0.4s cubic-bezier(0.22,1.45,0.36,1)';
         requestAnimationFrame(() => { wheelEl.style.transform = `rotate(${toDeg}deg)`; });
-        setTimeout(() => { wheelEl.style.transition = 'none'; resolve(); }, 340);
+        setTimeout(() => { wheelEl.style.transition = 'none'; resolve(); }, 420);
       } else {
         wheelEl.style.transform = `rotate(${toDeg}deg)`;
         resolve();
