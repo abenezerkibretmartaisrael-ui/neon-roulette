@@ -1055,26 +1055,37 @@ async function init(){
   layoutWheelNumbers();
   buildBulbRing();
   window.addEventListener("resize", () => { layoutWheelNumbers(); buildBulbRing(); });
-  await syncTime();
-  await refreshBalance();
-  await refreshMyBet();
-  await refreshHistory();
-  await refreshPot();
-  try{
-    // catch the feed cursor up to "now" silently, so opening the app doesn't
-    // immediately replay a burst of toasts for bets that already happened
+
+  // Fetch all startup data in parallel instead of sequentially
+  try {
+    await Promise.all([
+      syncTime(),
+      refreshBalance(),
+      refreshMyBet(),
+      refreshHistory(),
+      refreshPot()
+    ]);
+  } catch (err) {
+    console.error("Error during startup sync:", err);
+  }
+
+  // Fetch initial betfeed state
+  try {
     const res = await fetch(`${API_BASE}/api/betfeed?since=0`);
     const data = await res.json();
-    if(data.events && data.events.length){
+    if (data.events && data.events.length) {
       lastBetEventId = Math.max(0, ...data.events.map(e => e.id));
     }
-  }catch(e){}
+  } catch (e) {}
+
+  // Start animation loop and background interval updates
   requestAnimationFrame(tick);
   setInterval(refreshBalance, 10000);
   setInterval(refreshPot, 4000);
   setInterval(refreshBetFeed, 1600);
   setInterval(syncTime, 60000);
 }
+
 init();
 </script>
 </body>
